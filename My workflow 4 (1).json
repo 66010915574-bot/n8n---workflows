@@ -1,0 +1,913 @@
+{
+  "name": "My workflow 4",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 7-19/4 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1488,
+        432
+      ],
+      "id": "3c888442-60d7-4827-b015-5b829bd0c7f1",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=site:th.investing.com&hl=th&gl=TH&ceid=TH:th",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1072,
+        432
+      ],
+      "id": "cdcbadfa-3f13-4483-a5a7-70954e3a36c6",
+      "name": "investing"
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=site:fnsyrus.com+mc03&hl=th&gl=TH&ceid=TH:th",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1072,
+        576
+      ],
+      "id": "441b273b-9e29-4956-8b8e-53ebc5389676",
+      "name": "fnsyrus.com"
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=site:bangkokbiznews.com+หุ้น+เศรษฐกิจ&hl=th&gl=TH&ceid=TH:th",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1072,
+        288
+      ],
+      "id": "fb7dbd50-8106-4e68-ac5c-a7833531c909",
+      "name": "bangkokbiznews"
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=site:krungsrisecurities.com+blog&hl=th&gl=TH&ceid=TH:th",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1072,
+        720
+      ],
+      "id": "6e5efc7c-37b2-4bd4-85f6-8e707f83d51f",
+      "name": "krungsrisecurities"
+    },
+    {
+      "parameters": {
+        "url": "https://news.google.com/rss/search?q=site:innovestxonline.com+ข่าว+บทวิเคราะห์&hl=th&gl=TH&ceid=TH:th",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1072,
+        160
+      ],
+      "id": "572a7826-f775-4a77-ba22-be8e68ffae53",
+      "name": "innovestxonline"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -896,
+        224
+      ],
+      "id": "139e13e0-fd7d-456a-a5f5-b3fbe604d78b",
+      "name": "Merge M1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -896,
+        656
+      ],
+      "id": "e825a33a-193b-4878-b356-10766fab3c5c",
+      "name": "Merge M2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -768,
+        432
+      ],
+      "id": "7e2607bf-a56c-487e-9c80-fd496dfe46ab",
+      "name": "Merge M3"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -576,
+        448
+      ],
+      "id": "98ae07fc-1ec2-41f9-96f1-234afde13016",
+      "name": "Merge M4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const seen = new Set();\nconst out = [];\n\nfunction tryParseRSS(text, srcName) {\n  const items = [];\n  const t = text || \"\";\n  const entryRegex = /<item[\\s\\S]*?<\\/item>/g;\n  const atomEntryRegex = /<entry[\\s\\S]*?<\\/entry>/g;\n  const blocks = t.match(entryRegex) || t.match(atomEntryRegex) || [];\n  for (const b of blocks) {\n    const get = (re) => ((b.match(re) || [])[1] || \"\").replace(/<!\\[CDATA\\[|\\]\\]>/g, \"\").trim();\n    const title = get(/<title[^>]*>([\\s\\S]*?)<\\/title>/);\n    const link  = get(/<link[^>]*>([\\s\\S]*?)<\\/link>/) || get(/<link[^>]*href=[\"']([\\s\\S]*?)[\"'][^>]*\\/>/);\n    const pub   = get(/<(pubDate|updated|published)[^>]*>([\\s\\S]*?)<\\/\\1>/) || new Date().toISOString();\n    const desc  = get(/<(description|summary|content)[^>]*>([\\s\\S]*?)<\\/\\1>/);\n    if (title && link) items.push({ title, link, publishedAt: pub, summary: desc, source: srcName || \"rss\" });\n  }\n  return items;\n}\n\nfor (const it of items) {\n  const payload = it.json; // จาก HTTP เป็น string (RSS)\n  const rows = typeof payload === \"string\" ? tryParseRSS(payload, \"web\") : [];\n  for (const r of rows) {\n    const title = (r.title || \"\").trim();\n    const url   = (r.link  || \"\").trim();\n    if (!title || !url) continue;\n    const key = (title + \"|\" + url).toLowerCase();\n    if (seen.has(key)) continue;\n    seen.add(key);\n    out.push({ json: {\n      source: r.source || \"web\",\n      url, title,\n      body: (r.summary || \"\").trim(),\n      publishedAt: r.publishedAt || r.pubDate || new Date().toISOString()\n    }});\n  }\n}\nreturn out;\n// ทดสอบครั้งแรกข่าวเยอะไป? เติม:  return out.slice(0, 20);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        448
+      ],
+      "id": "6738f900-28a3-4323-b6fc-1c929cd2e2ce",
+      "name": "Normalize"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        0,
+        608
+      ],
+      "id": "604e43f4-979e-408b-8e2a-48f28e30f889",
+      "name": "Join AI Input",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const wl = items.map(i => (i.json.ticker || \"\").toUpperCase().trim()).filter(Boolean);\nreturn [{ json: { watchlist: Array.from(new Set(wl)) } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        880
+      ],
+      "id": "9a571b84-c990-4fde-a63b-516d20288c1e",
+      "name": "Build Watchlist"
+    },
+    {
+      "parameters": {
+        "jsCode": "// รวมทุกไอเท็มที่เข้ามาให้เป็น 1 ก้อน เพื่อส่งต่อ\nconst all = $input.all();\nif (!all || all.length === 0) {\n  return [{ json: { items: [] } }];\n}\nconst news = all.map(i => i.json);\nreturn [{ json: { items: news } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        448
+      ],
+      "id": "a82418d6-89f8-4576-917e-230f82a469b8",
+      "name": "Aggregate News"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=คุณคือผู้ช่วยด้านการลงทุนสำหรับนักลงทุนไทย\nหน้าที่: คัดข่าว/บทวิเคราะห์ที่มีสาระสำคัญและ actionable จาก input และลิสต์หุ้นในพอร์ต (watchlist)\n\nงาน:\n1) เลือกเฉพาะข่าวสำคัญที่มีผลต่อการตัดสินใจ และเกี่ยวข้องกับหุ้นใน watchlist เท่านั้น\n2) สรุปสั้น กระชับ ไม่เกิน 3 บรรทัด/เรื่อง\n3) ให้ sentiment = Positive / Negative / Neutral\n4) ให้ impact.on_portfolio = Bullish / Bearish / Muted / Unclear พร้อม rationale สั้น ๆ\n5) tickers ต้องมาจาก watchlist เท่านั้น (ถ้าไม่เกี่ยวข้องให้ใส่เป็น [])\n6) ส่งออกไม่เกิน 12 เรื่อง (ถ้าไม่มีข่าวที่เกี่ยวข้อง ให้ส่ง items: [])\n7) เวลา as_of ใช้รูปแบบ ISO 8601 พร้อมโซนเวลา Asia/Bangkok\n\nข้อห้าม: ห้ามให้คำแนะนำซื้อ/ขายหรือราคาเป๊ะ ๆ\nภาษา: ไทย\n\nSchema:\n{\n  \"type\": \"object\",\n  \"required\": [\"run_title\", \"as_of\", \"items\"],\n  \"properties\": {\n    \"run_title\": { \"type\": \"string\" },\n    \"as_of\": { \"type\": \"string\" },\n    \"items\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"required\": [\"title\",\"url\",\"source\",\"publishedAt\",\"summary\",\"sentiment\",\"impact\",\"tickers\"],\n        \"properties\": {\n          \"title\": { \"type\": \"string\" },\n          \"url\": { \"type\": \"string\" },\n          \"source\": { \"type\": \"string\" },\n          \"publishedAt\": { \"type\": \"string\" },\n          \"summary\": { \"type\": \"string\" },\n          \"sentiment\": { \"type\": \"string\", \"enum\": [\"Positive\",\"Negative\",\"Neutral\"] },\n          \"impact\": {\n            \"type\": \"object\",\n            \"required\": [\"on_portfolio\",\"rationale\"],\n            \"properties\": {\n              \"on_portfolio\": { \"type\": \"string\", \"enum\": [\"Bullish\",\"Bearish\",\"Muted\",\"Unclear\"] },\n              \"rationale\": { \"type\": \"string\" }\n            }\n          },\n          \"tickers\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } }\n        },\n        \"additionalProperties\": false\n      }\n    }\n  },\n  \"additionalProperties\": false\n}\n\nINPUT:\n{{ JSON.stringify($json) }}\n\n**หมายเหตุ**:\n- ต้องตอบเป็น JSON เพียว ๆ เท่านั้น ห้ามมีข้อความอื่นปน\n- JSON ต้อง parse ได้โดยไม่ error\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        608
+      ],
+      "id": "f20e69de-bd09-4bbc-bce6-c9c95c8ff806",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// รับ input จาก Join AI Input\nconst data = items[0].json;\n\n// แยกออกมา\nconst news = data.items || [];\nconst watchlist = data.watchlist || [];\n\n// รวมเป็นโครงเดียว\nreturn [{\n  json: {\n    news,\n    watchlist\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        608
+      ],
+      "id": "59366ee4-bc82-4bf1-af49-370fc5189348",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "model": "deepseek/deepseek-chat-v3-0324:free",
+        "options": {
+          "responseFormat": "json_object"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        352,
+        848
+      ],
+      "id": "e437d813-8aa8-4fb7-97b6-5f264a3aa578",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "6l9lisdnzYZF9F8z",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Build Email HTML from AI Agent JSON\n * EXPECTED INPUT (from AI Agent):\n * {\n *   run_title: \"Investor Daily Brief\",\n *   as_of: \"2025-09-20 16:00 ICT\",\n *   items: [\n *     {\n *       title, url, source, publishedAt,\n *       summary, sentiment, \n *       impact: { on_portfolio, rationale },\n *       tickers: [...]\n *     }\n *   ]\n * }\n */\n\nconst data = $json || {};\n\nfunction esc(s){\n  return String(s ?? '').replace(/[&<>\"]/g, m => ({\n    '&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'\n  }[m]));\n}\n\nconst title = esc(data.run_title || 'Investor Daily Brief');\nconst asOf  = esc(data.as_of || new Date().toISOString());\nconst items = Array.isArray(data.items) ? data.items : [];\n\nconst header = `\n<div style=\"font-family:ui-sans-serif,system-ui,Segoe UI,Arial;max-width:800px;margin:auto;padding:16px\">\n  <h2 style=\"margin:0 0 6px\">${title}</h2>\n  <div style=\"color:#64748b;font-size:13px;margin-bottom:12px\">as of ${asOf}</div>\n`;\n\nconst rows = items.map((it, i) => {\n  const t   = esc(it.title);\n  const url = esc(it.url);\n  const src = esc(it.source);\n  const pub = esc(it.publishedAt);\n  const sum = esc(it.summary);\n  const sen = esc(it.sentiment);\n  const imp = esc(it.impact?.on_portfolio || '');\n  const rat = esc(it.impact?.rationale || '');\n  const ticks = Array.isArray(it.tickers) ? esc(it.tickers.join(', ')) : '';\n\n  const senColor = sen === 'Positive' ? '#16a34a'\n                   : sen === 'Negative' ? '#dc2626'\n                   : '#6b7280';\n  const impColor = imp === 'Bullish' ? '#16a34a'\n                   : imp === 'Bearish' ? '#dc2626'\n                   : imp === 'Muted' ? '#64748b'\n                   : '#6b7280';\n\n  return `\n  <tr>\n    <td style=\"padding:12px 0;border-top:1px solid #e5e7eb;vertical-align:top\">\n      <div style=\"font-weight:600;font-size:15px;margin-bottom:6px\">\n        ${i+1}. <a href=\"${url}\" style=\"color:#0ea5e9;text-decoration:none\">${t}</a>\n      </div>\n      <div style=\"color:#374151;font-size:14px;line-height:1.55\">${sum}</div>\n      <div style=\"margin-top:8px;font-size:12px;color:#6b7280\">\n        <span>Source: ${src}</span>\n        ${pub ? `<span style=\"margin-left:8px\">• Published: ${pub}</span>` : ``}\n      </div>\n      <div style=\"margin-top:8px;font-size:12px\">\n        <span style=\"display:inline-block;background:${senColor};color:#fff;padding:2px 8px;border-radius:999px;margin-right:6px\">Sentiment: ${sen || 'Neutral'}</span>\n        ${imp ? `<span style=\"display:inline-block;background:${impColor};color:#fff;padding:2px 8px;border-radius:999px;margin-right:6px\">Impact: ${imp}</span>` : ``}\n        ${rat ? `<span style=\"color:#6b7280\">( ${rat} )</span>` : ``}\n      </div>\n      ${ticks ? `<div style=\"margin-top:6px;font-size:12px;color:#334155\">Tickers: <strong>${ticks}</strong></div>` : ``}\n    </td>\n  </tr>`;\n}).join('') || `\n  <tr><td style=\"padding:12px 0;border-top:1px solid #e5e7eb;color:#6b7280\">\n    ไม่มีข่าวที่เข้าเกณฑ์หรือเกี่ยวข้องกับ watchlist ในรอบนี้\n  </td></tr>\n`;\n\nconst footer = `\n  <div style=\"margin-top:16px;color:#94a3b8;font-size:12px;border-top:1px solid #e5e7eb;padding-top:8px\">\n    ส่งอัตโนมัติโดย n8n • เวลาระบบ: ${new Date().toLocaleString('th-TH',{ timeZone:'Asia/Bangkok' })}\n  </div>\n</div>`;\n\nconst html = `${header}<table style=\"width:100%;border-collapse:collapse\">${rows}</table>${footer}`;\n\n// SUBJECT แนะนำแนวนี้\nconst subject = `${title} — ${asOf}`;\n\nreturn [{\n  json: {\n    subject,\n    html,\n    count: items.length\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        608
+      ],
+      "id": "2184d61d-e658-43b6-a5b1-3fc907a7f40c",
+      "name": "Build Email HTML"
+    },
+    {
+      "parameters": {
+        "sendTo": "kittimalookyee@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1152,
+        592
+      ],
+      "id": "b72861ef-6bc6-4b4a-a09c-5539605d7dc1",
+      "name": "Send a message",
+      "webhookId": "f4f7b408-2728-42ba-91c5-3acfe7003066",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ZNUCOEdliHWqSEAi",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "64c65090-2777-4f7f-af8d-635812023abc",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        912,
+        608
+      ],
+      "id": "30e87b57-061a-4163-95d4-3e6f6760a570",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "// สร้างหน้าต่างเวลาแจ้งเตือน 48 ชม.ข้างหน้า (ปรับได้)\n// ใช้ Asia/Bangkok ให้สอดคล้องเวลาจริง\nconst now = new Date();\nconst end = new Date(now.getTime() + 48 * 60 * 60 * 1000); // +48h\n\nreturn [{\n  json: {\n    timeMin: now.toISOString(),\n    timeMax: end.toISOString()\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        16
+      ],
+      "id": "a69479db-b40a-4d15-9ef5-c45ae8dc9308",
+      "name": "Build Cal Window"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "badbb1147@gmail.com",
+          "mode": "list",
+          "cachedResultName": "badbb1147@gmail.com"
+        },
+        "timeMin": "={{$now}}",
+        "timeMax": "={{$now.plus(7, 'days')}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -688,
+        16
+      ],
+      "id": "a6f16c5d-6458-40a5-95a1-376bc29e2c4a",
+      "name": "Get many events",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "sn1wU8tMT2ljbqWn",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ddfcb9f-c8d7-4dd0-83d2-ce3ef7ca9d50",
+              "leftValue": "={{$json.count}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -272,
+        16
+      ],
+      "id": "51584552-285f-408f-a034-81db87689514",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "sendTo": "kittimalookyee@gmail.com",
+        "subject": "={{$json.subject}}",
+        "message": "={{$json.html}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "95cd7545-9630-46fd-9664-174f8247adea",
+      "name": "Send a message1",
+      "webhookId": "e217582b-6b3f-4b57-83b0-7b743d86a0ef",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ZNUCOEdliHWqSEAi",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1YX8zAbvUmEkVXCVCxpKnhBISkGfV4jUtAqEZbM9n7Rk",
+          "mode": "list",
+          "cachedResultName": "investor_alert_logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YX8zAbvUmEkVXCVCxpKnhBISkGfV4jUtAqEZbM9n7Rk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "email_logs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YX8zAbvUmEkVXCVCxpKnhBISkGfV4jUtAqEZbM9n7Rk/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sent_at ": "={{$now}}",
+            "to": "={{ $json.to || $prevNode[\"Send a message\"].json.to || \"me@example.com\" }}",
+            " subject": "={{ $json.subject || $prevNode[\"Build Email HTML\"].json.subject }}",
+            "event_count": "={{ $prevNode[\"Code in JavaScript (Normalize & Filter)\"].json.count || 0 }}",
+            "window_days": "={{ $prevNode[\"Code in JavaScript (Normalize & Filter)\"].json.windowDays || 14 }}",
+            "status ": "={{ $prevNode[\"Send a message\"].json.id ? \"SENT\" : \"NO_SEND\" }}",
+            "message_id": "={{ $prevNode[\"Send a message\"].json.id || \"\" }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "sent_at ",
+              "displayName": "sent_at ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "to",
+              "displayName": "to",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": " subject",
+              "displayName": " subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_count",
+              "displayName": "event_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "window_days",
+              "displayName": "window_days",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status ",
+              "displayName": "status ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "message_id",
+              "displayName": "message_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        0
+      ],
+      "id": "261ff4b9-4ecf-4097-b5c8-eb7cd8385ed6",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "9GHzulsPjO29AYMm",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---- ตั้งค่าคีย์เวิร์ดที่อยากจับคู่ (แก้ไข/เพิ่มได้) ----\nconst KEYWORDS = [\n  // AGM / ผู้ถือหุ้น\n  'ประชุมผู้ถือหุ้น', 'AGM', 'E-AGM',\n  // งบการเงิน / ผลประกอบการ\n  'งบการเงิน', 'งวดไตรมาส', 'ผลประกอบการ', 'ประกาศงบ', 'earnings',\n  // ปันผล / XD / XM / XR\n  'ปันผล', 'XD', 'XM', 'XR', 'dividend'\n];\n\n// จำกัดช่วงวันล่วงหน้า (หน่วยวัน) ที่ต้องการเตือน\nconst ALERT_WINDOW_DAYS = 14;\n\n// ฟังก์ชันช่วย\nconst toDate = (s) => s ? new Date(s) : null;\nconst daysBetween = (a, b) => Math.ceil((a - b) / (1000 * 60 * 60 * 24));\nconst text = (v) => (v || '').toString();\n\n// ดึงรายการอีเวนต์จาก input (Google Calendar – Get many events)\nconst items = $input.all();\n\n// Google Calendar node ปกติจะส่งออกเป็นอาร์เรย์ของอีเวนต์ใน items[x].json\n// รองรับทั้งกรณี “Return All” และใส่ “Limit”\nlet events = [];\nfor (const it of items) {\n  const ev = it.json;\n  // บาง credential/เวอร์ชันจะให้มาเป็นอาร์เรย์ในฟิลด์ 'data' หรือ 'events'\n  if (Array.isArray(ev)) events.push(...ev);\n  else if (Array.isArray(ev.data)) events.push(...ev.data);\n  else if (Array.isArray(ev.events)) events.push(...ev.events);\n  else events.push(ev);\n}\n\n// Normalize ฟิลด์ที่เราต้องการ\nconst now = new Date();\nconst normalized = events.map((ev) => {\n  // โครงสร้างมาตรฐานของ Calendar API: ev.summary, ev.description, ev.start, ev.end, ev.htmlLink, ev.location\n  const startStr = ev.start?.dateTime || ev.start?.date; // all-day event อาจเป็น date\n  const endStr   = ev.end?.dateTime   || ev.end?.date;\n\n  const start = toDate(startStr);\n  const end   = toDate(endStr);\n\n  // daysUntil: ใช้เริ่มต้นอีเวนต์\n  const daysUntil = (start) ? daysBetween(start, now) : null;\n\n  // รวมข้อความสำหรับค้นคีย์เวิร์ด\n  const blob = [\n    ev.summary, ev.description, ev.location\n  ].map(text).join(' ').toLowerCase();\n\n  const matchedKeywords = KEYWORDS.filter(k => blob.includes(k.toLowerCase()));\n\n  // label ประเภทอีเวนต์แบบง่ายๆ จาก keyword\n  let eventType = null;\n  if (matchedKeywords.some(k => ['ปันผล','xd','xm','xr','dividend'].includes(k.toLowerCase()))) {\n    eventType = 'Dividend';\n  } else if (matchedKeywords.some(k => ['งบการเงิน','ผลประกอบการ','ประกาศงบ','earnings'].includes(k.toLowerCase()))) {\n    eventType = 'Earnings';\n  } else if (matchedKeywords.some(k => ['ประชุมผู้ถือหุ้น','agm','e-agm'].includes(k.toLowerCase()))) {\n    eventType = 'AGM';\n  }\n\n  return {\n    title: ev.summary || '(No title)',\n    description: ev.description || '',\n    start: startStr || '',\n    end: endStr || '',\n    location: ev.location || '',\n    link: ev.htmlLink || ev.hangoutLink || '',\n    daysUntil,\n    matchedKeywords,\n    eventType\n  };\n});\n\n// กรองเฉพาะอีเวนต์ที่:\n// 1) อยู่ในช่วงล่วงหน้าไม่เกิน ALERT_WINDOW_DAYS\n// 2) มีคีย์เวิร์ดที่สนใจอย่างน้อย 1 คำ\nconst filtered = normalized.filter(e =>\n  e.daysUntil !== null &&\n  e.daysUntil >= 0 &&\n  e.daysUntil <= ALERT_WINDOW_DAYS &&\n  e.matchedKeywords.length > 0\n);\n\n// ส่งออก 1 item เพื่อให้ If ใช้ตรวจ count ได้ง่าย\nreturn [{\n  json: {\n    count: filtered.length,\n    windowDays: ALERT_WINDOW_DAYS,\n    events: filtered\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        16
+      ],
+      "id": "3238b481-27c8-4bd0-899e-dffef7d43a63",
+      "name": "Normalize & Filter"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { events, windowDays } = $json;\n\nfunction esc(s='') {\n  return s.toString().replace(/[&<>\"]/g, c => (\n    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;' }[c]\n  ));\n}\n\nconst rows = (events || []).map((e, i) => `\n  <tr>\n    <td>${i+1}</td>\n    <td>${esc(e.title)}</td>\n    <td>${esc(e.eventType || '-')}</td>\n    <td>${esc(e.start)}</td>\n    <td>${esc(e.location || '-')}</td>\n    <td>${e.daysUntil} วัน</td>\n    <td>${e.link ? `<a href=\"${esc(e.link)}\">เปิดดู</a>` : '-'}</td>\n  </tr>\n`).join('');\n\nconst html = `\n  <div style=\"font-family:system-ui,Segoe UI,Arial\">\n    <h2>Calendar Alert (ภายใน ${windowDays} วัน)</h2>\n    <p>พบอีเวนต์สำคัญทั้งหมด <b>${events.length}</b> รายการ</p>\n    <table border=\"1\" cellspacing=\"0\" cellpadding=\"6\">\n      <thead>\n        <tr>\n          <th>#</th><th>หัวข้อ</th><th>ประเภท</th><th>เริ่ม</th><th>สถานที่</th><th>ในอีก</th><th>ลิงก์</th>\n        </tr>\n      </thead>\n      <tbody>\n        ${rows || `<tr><td colspan=\"7\">ไม่พบอีเวนต์</td></tr>`}\n      </tbody>\n    </table>\n  </div>\n`;\n\nreturn [{ json: { subject: `Calendar Alert – ${events.length} รายการ`, html } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0f4a4c54-6acf-4835-a912-6ad578bc0ee8",
+      "name": "Build Email HTML1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1KlGbAROlCjHMzvf-Oyng9_AIw0E0kAVCiyfJppZXBD4",
+          "mode": "list",
+          "cachedResultName": "investor_alert",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KlGbAROlCjHMzvf-Oyng9_AIw0E0kAVCiyfJppZXBD4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "watchlist",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KlGbAROlCjHMzvf-Oyng9_AIw0E0kAVCiyfJppZXBD4/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1280,
+        432
+      ],
+      "id": "5147d023-12fa-4751-b075-892aa7b113a2",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "9GHzulsPjO29AYMm",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Cal Window",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "investing": {
+      "main": [
+        [
+          {
+            "node": "Merge M4",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "fnsyrus.com": {
+      "main": [
+        [
+          {
+            "node": "Merge M2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "bangkokbiznews": {
+      "main": [
+        [
+          {
+            "node": "Merge M1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "krungsrisecurities": {
+      "main": [
+        [
+          {
+            "node": "Merge M2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "innovestxonline": {
+      "main": [
+        [
+          {
+            "node": "Merge M1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge M1": {
+      "main": [
+        [
+          {
+            "node": "Merge M3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge M2": {
+      "main": [
+        [
+          {
+            "node": "Merge M3",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge M3": {
+      "main": [
+        [
+          {
+            "node": "Merge M4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge M4": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "Aggregate News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join AI Input": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Watchlist": {
+      "main": [
+        [
+          {
+            "node": "Join AI Input",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Aggregate News": {
+      "main": [
+        [
+          {
+            "node": "Join AI Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Build Email HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email HTML": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cal Window": {
+      "main": [
+        [
+          {
+            "node": "Get many events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many events": {
+      "main": [
+        [
+          {
+            "node": "Normalize & Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Build Email HTML1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize & Filter": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email HTML1": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Build Watchlist",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "innovestxonline",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "krungsrisecurities",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "bangkokbiznews",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "fnsyrus.com",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "investing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9e358960-91f7-4314-bc0a-337988815617",
+  "meta": {
+    "instanceId": "564527b7200d00adab0772db26c63e1553cd7950a7b34bdc660fb5818dcd1a57"
+  },
+  "id": "l6wDz4pNXkRZO5l1",
+  "tags": []
+}
